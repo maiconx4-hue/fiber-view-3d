@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
-import { Map as MapIcon, GitBranch, Move, Triangle, Box, Eye, Trash2, RotateCcw } from "lucide-react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Map as MapIcon, GitBranch, Move, Triangle, Box, Eye, Trash2, RotateCcw, Save, Upload } from "lucide-react";
 import type { MapMode } from "@/components/NetworkMap";
 import { Timeline } from "@/components/Timeline";
 import { BoxViewer } from "@/components/BoxViewer";
 import { childrenOf, distanceTo, newId, nodeCode, seedProject, type FNode, type NodeType, type Project } from "@/lib/ftth";
+import { importExcel, importKmz } from "@/lib/importers";
+import { supabase } from "@/integrations/supabase/client";
 
 const NetworkMap = lazy(() => import("@/components/NetworkMap"));
 
