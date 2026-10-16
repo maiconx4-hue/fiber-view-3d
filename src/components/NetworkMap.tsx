@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import maplibregl, { type Map as MLMap, type Marker, type GeoJSONSource } from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import type { Map as MLMap, Marker, GeoJSONSource, MapLayerMouseEvent, MapMouseEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { edgeCoords, fiber, nearestSegment, pathLength, type FEdge, type FNode, type LngLat, type NodeType } from "@/lib/ftth";
 
@@ -113,7 +114,7 @@ export default function NetworkMap(props: Props) {
       };
       tick();
 
-      m.on("click", "edges-hit", (e) => {
+      m.on("click", "edges-hit", (e: MapLayerMouseEvent) => {
         const s = live.current;
         if (s.mode !== "edit") return;
         const id = e.features?.[0]?.properties?.id as string;
@@ -131,7 +132,7 @@ export default function NetworkMap(props: Props) {
       m.on("mouseleave", "edges-hit", () => { m.getCanvas().style.cursor = ""; });
       setReady(true);
     });
-    m.on("click", (e) => {
+    m.on("click", (e: MapMouseEvent) => {
       const s = live.current;
       if (s.mode === "add-cto") s.onAddNode("cto", e.lngLat.lng, e.lngLat.lat);
       else if (s.mode === "add-ceo") s.onAddNode("ceo", e.lngLat.lng, e.lngLat.lat);

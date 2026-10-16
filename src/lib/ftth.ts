@@ -91,7 +91,7 @@ export function edgeCoords(e: FEdge, nodes: FNode[]): LngLat[] | null {
 
 export function pathLength(coords: LngLat[]) {
   let d = 0;
-  for (let i = 1; i < coords.length; i++) d += haversine(coords[i - 1], coords[i]);
+  for (let i = 1; i < coords.length; i++) d += haversine(coords[i - 1]!, coords[i]!);
   return d;
 }
 
