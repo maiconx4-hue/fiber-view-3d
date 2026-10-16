@@ -211,5 +211,9 @@ export default function NetworkMap(props: Props) {
     if (n) map.current.flyTo({ center: [n.lng, n.lat], zoom: 18.2, pitch: 65, duration: 1600, essential: true });
   }, [props.focus]);
 
-  return <div ref={box} className={`absolute inset-0 map-mode-${props.mode}`} />;
+  return (
+    <div className={`absolute inset-0 map-mode-${props.mode}`}>
+      <div ref={box} className="h-full w-full" />
+    </div>
+  );
 }
