@@ -132,8 +132,8 @@ export function nearestSegment(coords: LngLat[], pt: LngLat) {
   let best = 0;
   let bd = Infinity;
   for (let i = 1; i < coords.length; i++) {
-    const [ax, ay] = coords[i - 1];
-    const [bx, by] = coords[i];
+    const [ax, ay] = coords[i - 1] as LngLat;
+    const [bx, by] = coords[i] as LngLat;
     const dx = bx - ax, dy = by - ay;
     const t = Math.max(0, Math.min(1, ((pt[0] - ax) * dx + (pt[1] - ay) * dy) / (dx * dx + dy * dy || 1)));
     const d = (ax + t * dx - pt[0]) ** 2 + (ay + t * dy - pt[1]) ** 2;

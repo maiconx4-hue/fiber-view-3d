@@ -178,8 +178,8 @@ export default function NetworkMap(props: Props) {
       if (!c) return;
       // rótulo de medida
       const len = pathLength(c);
-      const mid = c[Math.floor((c.length - 1) / 2)];
-      const nxt = c[Math.floor((c.length - 1) / 2) + 1];
+      const mid = c[Math.floor((c.length - 1) / 2)]!;
+      const nxt = c[Math.floor((c.length - 1) / 2) + 1]!;
       const lbl = document.createElement("div");
       lbl.className = "edge-label";
       lbl.textContent = `${Math.round(len)} m`;
