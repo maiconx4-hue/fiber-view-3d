@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
-import { Map as MapIcon, GitBranch, Move, Triangle, Box, Eye, Trash2, RotateCcw } from "lucide-react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Map as MapIcon, GitBranch, Move, Triangle, Box, Eye, Trash2, RotateCcw, Save, Upload } from "lucide-react";
 import type { MapMode } from "@/components/NetworkMap";
 import { Timeline } from "@/components/Timeline";
 import { BoxViewer } from "@/components/BoxViewer";
 import { childrenOf, distanceTo, newId, nodeCode, seedProject, type FNode, type NodeType, type Project } from "@/lib/ftth";
+import { importExcel, importKmz } from "@/lib/importers";
+import { supabase } from "@/integrations/supabase/client";
 
 const NetworkMap = lazy(() => import("@/components/NetworkMap"));
 
@@ -33,9 +35,20 @@ function Index() {
   const [open, setOpen] = useState<string | null>(null);
   const [focus, setFocus] = useState<{ id: string; ts: number } | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try { const s = localStorage.getItem(KEY); if (s) setProject(JSON.parse(s)); } catch { /* ignore */ }
+    try {
+      const s = localStorage.getItem(KEY);
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.id) setProjectId(parsed.id);
+        if (parsed.data) setProject(parsed.data); else setProject(parsed);
+      }
+    } catch { /* ignore */ }
     setLoaded(true);
   }, []);
   useEffect(() => { if (loaded) localStorage.setItem(KEY, JSON.stringify(project)); }, [project, loaded]);
