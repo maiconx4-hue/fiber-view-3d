@@ -39,7 +39,7 @@ export function BoxViewer({ project, node, onClose, onChange }: Props) {
   const kids = childrenOf(project, node.id);
   const outputs = Array.from({ length: 8 }, (_, i) => ({
     color: fiber(i + 1).hex,
-    on: isCto ? node.clients[i] : kids.some((k) => k.inputFiber === i + 1),
+    on: isCto ? !!node.clients[i] : kids.some((k) => k.inputFiber === i + 1),
   }));
   const power = estimatedPower(project, node.id);
   const [city, pop, der, cto] = code.split(".");

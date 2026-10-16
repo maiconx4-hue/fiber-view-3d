@@ -14,7 +14,7 @@ export const ABNT = [
   { n: 12, name: "Aqua", hex: "#22d3ee" },
 ] as const;
 
-export const fiber = (n: number) => ABNT[(Math.max(1, n) - 1) % 12];
+export const fiber = (n: number) => ABNT[(Math.max(1, n) - 1) % 12]!;
 
 export type NodeType = "pop" | "ceo" | "cto";
 export type LngLat = [number, number];
