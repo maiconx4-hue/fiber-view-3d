@@ -117,7 +117,7 @@ export default function NetworkMap(props: Props) {
       m.on("click", "edges-hit", (e: MapLayerMouseEvent) => {
         const s = live.current;
         if (s.mode !== "edit") return;
-        const id = e.features?.[0]?.properties?.id as string;
+        const id = e.features?.[0]?.properties?.["id"] as string;
         const pt: LngLat = [e.lngLat.lng, e.lngLat.lat];
         s.onEdgesChange(s.edges.map((ed) => {
           if (ed.id !== id) return ed;
