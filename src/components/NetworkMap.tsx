@@ -26,7 +26,7 @@ const STYLE: maplibregl.StyleSpecification = {
       type: "raster",
       tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
       tileSize: 256,
-      maxzoom: 19,
+      maxzoom: 17,
       attribution: "Imagens © Esri, Maxar, Earthstar",
     },
     labels: {
@@ -130,6 +130,12 @@ export default function NetworkMap(props: Props) {
       });
       m.on("mouseenter", "edges-hit", () => { if (live.current.mode === "edit") m.getCanvas().style.cursor = "copy"; });
       m.on("mouseleave", "edges-hit", () => { m.getCanvas().style.cursor = ""; });
+      const ns = live.current.nodes;
+      if (ns.length > 1) {
+        const b = new maplibregl.LngLatBounds();
+        ns.forEach((n) => b.extend([n.lng, n.lat]));
+        m.fitBounds(b, { padding: { top: 120, bottom: 140, left: 40, right: 40 }, pitch: 60, bearing: -24, duration: 0 });
+      }
       setReady(true);
     });
     m.on("click", (e: MapMouseEvent) => {

@@ -184,8 +184,8 @@ body { font-family: var(--font-sans); overflow: hidden; }
 
 .view-layer { position: absolute; inset: 0; transition: transform .8s cubic-bezier(.7,0,.2,1), opacity .6s, filter .6s; transform-origin: 50% 60%; }
 .view-layer.is-active { transform: none; opacity: 1; z-index: 2; }
-.view-layer.is-away-back { transform: translateZ(-500px) rotateX(35deg) scale(.7); opacity: 0; filter: blur(6px); pointer-events: none; }
-.view-layer.is-away-front { transform: translateZ(300px) rotateX(-20deg) scale(1.2); opacity: 0; filter: blur(6px); pointer-events: none; }
+.view-layer.is-away-back { visibility: hidden; z-index: 0; transition-property: transform, opacity, filter, visibility; transform: translateZ(-500px) rotateX(35deg) scale(.7); opacity: 0; filter: blur(6px); pointer-events: none; }
+.view-layer.is-away-front { visibility: hidden; z-index: 0; transition-property: transform, opacity, filter, visibility; transform: translateZ(300px) rotateX(-20deg) scale(1.2); opacity: 0; filter: blur(6px); pointer-events: none; }
 .timeline-layer { padding-top: 5.2rem; display: flex; flex-direction: column; }
 
 .toolbar { position: absolute; z-index: 10; left: 50%; transform: translateX(-50%); bottom: calc(1rem + env(safe-area-inset-bottom)); }
