@@ -315,3 +315,11 @@ body { font-family: var(--font-sans); overflow: hidden; }
 .out-row { display: flex; align-items: center; gap: .4rem; font-size: .72rem; padding: .2rem 0; }
 .out-row i { width: 10px; height: 10px; border-radius: 50%; border: 1px solid oklch(1 0 0 / .3); }
 .out-row b { margin-left: auto; font: 600 .72rem var(--font-mono); }
+
+.auth-page { position: fixed; inset: 0; overflow-y: auto; background: var(--background); color: var(--foreground); padding: 2rem 1.25rem; display: grid; align-items: center; }
+.auth-content { width: 100%; max-width: 25rem; margin: auto; }
+.auth-brand { margin: 2rem 0; }
+.auth-brand h1 { font-size: 2rem; }
+.account-control { display: flex; align-items: center; gap: .5rem; padding: .3rem; background: var(--glass); border: 1px solid var(--border); border-radius: 6px; }
+.account-email { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .75rem; }
+@media (max-width: 600px) { .account-email { display: none; } .topbar { justify-content: flex-start; } .account-control { margin-left: auto; } }

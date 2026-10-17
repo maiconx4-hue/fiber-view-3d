@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -12,6 +12,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AuthContext } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -119,8 +121,31 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <SessionContent />
     </QueryClientProvider>
   );
+}
+
+function SessionContent() {
+  const router = useRouter();
+  const { queryClient } = Route.useRouteContext();
+  const { data: user, isPending } = useQuery({ queryKey: ["auth-user"], queryFn: async () => {
+    const { data } = await supabase.auth.getUser();
+    return data.user;
+  }, retry: false });
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        sessionStorage.setItem("ftth-recovery", "true");
+        void router.navigate({ to: "/reset-password", replace: true });
+        return;
+      }
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      queryClient.setQueryData(["auth-user"], session?.user ?? null);
+      void router.invalidate();
+      if (event !== "SIGNED_OUT") void queryClient.invalidateQueries();
+    });
+    return () => subscription.unsubscribe();
+  }, [queryClient, router]);
+  return <AuthContext.Provider value={{ user: user ?? null, loading: isPending }}><Outlet /></AuthContext.Provider>;
 }
