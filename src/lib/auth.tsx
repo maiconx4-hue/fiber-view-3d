@@ -5,6 +5,7 @@ export const AuthContext = createContext<{ user: User | null; loading: boolean }
 export const useAuth = () => useContext(AuthContext);
 
 export function authError(message: string) {
+  if (/email address is not allowed/i.test(message)) return "Use um e-mail válido que possa receber o link de confirmação.";
   if (/invalid login credentials/i.test(message)) return "E-mail ou senha incorretos.";
   if (/email not confirmed/i.test(message)) return "Confirme seu e-mail antes de entrar.";
   if (/already registered/i.test(message)) return "Este e-mail já está cadastrado.";
