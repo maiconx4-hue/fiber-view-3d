@@ -7,6 +7,7 @@ import { BoxViewer } from "@/components/BoxViewer";
 import { childrenOf, distanceTo, newId, nodeCode, seedProject, type FNode, type NodeType, type Project } from "@/lib/ftth";
 import { importExcel, importKmz } from "@/lib/importers";
 import { supabase } from "@/integrations/supabase/client";
+import { AccountControl } from "@/components/AccountControl";
 
 const NetworkMap = lazy(() => import("@/components/NetworkMap"));
 
@@ -110,6 +111,7 @@ function Index() {
           <button className={view === "map" ? "is-on" : ""} onClick={() => setView("map")}><MapIcon size={15} /> Mapa 3D</button>
           <button className={view === "timeline" ? "is-on" : ""} onClick={() => setView("timeline")}><GitBranch size={15} /> Linha do tempo</button>
         </nav>
+        <AccountControl />
       </header>
 
       <section className={`view-layer ${view === "map" ? "is-active" : "is-away-back"}`}>
