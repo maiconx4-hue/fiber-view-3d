@@ -42,17 +42,48 @@ function Index() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    let id: string | null = null;
     try {
       const s = localStorage.getItem(KEY);
       if (s) {
         const parsed = JSON.parse(s);
-        if (parsed.id) setProjectId(parsed.id);
+        if (parsed.id) { id = parsed.id; setProjectId(parsed.id); }
         if (parsed.data) setProject(parsed.data); else setProject(parsed);
       }
     } catch { /* ignore */ }
     setLoaded(true);
+    (async () => {
+      const q = supabase.from("ftth_projects").select("id,data");
+      const { data } = id ? await q.eq("id", id).maybeSingle() : await q.order("updated_at", { ascending: false }).limit(1).maybeSingle();
+      if (data?.data) { setProjectId(data.id); setProject(data.data as unknown as Project); }
+    })();
   }, []);
-  useEffect(() => { if (loaded) localStorage.setItem(KEY, JSON.stringify(project)); }, [project, loaded]);
+  useEffect(() => { if (loaded) localStorage.setItem(KEY, JSON.stringify({ id: projectId, data: project })); }, [project, loaded, projectId]);
+  useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(null), 3500); return () => clearTimeout(t); }, [notice]);
+
+  const save = async () => {
+    setSaving(true);
+    const row = { name: `${project.city}.${project.pop}`, data: project as never, updated_at: new Date().toISOString() };
+    const res = projectId
+      ? await supabase.from("ftth_projects").update(row).eq("id", projectId).select("id").single()
+      : await supabase.from("ftth_projects").insert(row).select("id").single();
+    setSaving(false);
+    if (res.error) { setNotice("Erro ao salvar: " + res.error.message); return; }
+    setProjectId(res.data.id);
+    setNotice("Projeto salvo no banco de dados ✓");
+  };
+
+  const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      const p = /\.(xlsx|xls|csv)$/i.test(f.name) ? await importExcel(f) : await importKmz(f);
+      if (!p.nodes.length) { setNotice("Nenhum ponto encontrado no arquivo."); return; }
+      setProject(p); setSelected(null); setView("map");
+      setNotice(`Importado: ${p.nodes.length} caixas, ${p.edges.length} rotas. Toque em Salvar.`);
+    } catch (err) { setNotice("Falha ao importar: " + (err as Error).message); }
+  };
 
   const updNode = (n: FNode) => setProject((p) => ({ ...p, nodes: p.nodes.map((x) => (x.id === n.id ? n : x)) }));
 
@@ -111,8 +142,14 @@ function Index() {
           <button className={view === "map" ? "is-on" : ""} onClick={() => setView("map")}><MapIcon size={15} /> Mapa 3D</button>
           <button className={view === "timeline" ? "is-on" : ""} onClick={() => setView("timeline")}><GitBranch size={15} /> Linha do tempo</button>
         </nav>
-        <AccountControl />
+        <div className="flex items-center gap-1">
+          <button className="chip-btn" onClick={() => fileRef.current?.click()} aria-label="Importar KMZ ou Excel"><Upload size={14} /> Importar</button>
+          <button className="chip-btn is-on" onClick={save} disabled={saving} aria-label="Salvar no banco de dados"><Save size={14} /> {saving ? "Salvando…" : "Salvar"}</button>
+          <input ref={fileRef} type="file" accept=".kmz,.kml,.xlsx,.xls,.csv" hidden onChange={onImport} />
+          <AccountControl />
+        </div>
       </header>
+      {notice && <div className="hint" style={{ top: "9.5rem", bottom: "auto", zIndex: 60 }} role="status">{notice}</div>}
 
       <section className={`view-layer ${view === "map" ? "is-active" : "is-away-back"}`}>
         <Suspense fallback={<div className="absolute inset-0 grid place-items-center text-muted-foreground">Carregando mapa…</div>}>
