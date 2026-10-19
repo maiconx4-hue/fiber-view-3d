@@ -149,7 +149,7 @@ function Index() {
           <AccountControl />
         </div>
       </header>
-      {notice && <div className="hint" style={{ top: "4.5rem", bottom: "auto", zIndex: 60 }} role="status">{notice}</div>}
+      {notice && <div className="hint" style={{ top: "9.5rem", bottom: "auto", zIndex: 60 }} role="status">{notice}</div>}
 
       <section className={`view-layer ${view === "map" ? "is-active" : "is-away-back"}`}>
         <Suspense fallback={<div className="absolute inset-0 grid place-items-center text-muted-foreground">Carregando mapa…</div>}>
