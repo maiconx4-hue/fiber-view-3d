@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Map as MapIcon, GitBranch, Move, Triangle, Box, Eye, Trash2, RotateCcw, Save, Upload } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Map as MapIcon, GitBranch, Move, Triangle, Box, Eye, Trash2, RotateCcw, Save, Upload, FilePlus, Copy } from "lucide-react";
 import type { MapMode } from "@/components/NetworkMap";
 import { Timeline } from "@/components/Timeline";
 import { BoxViewer } from "@/components/BoxViewer";
@@ -8,11 +8,11 @@ import { childrenOf, distanceTo, newId, nodeCode, seedProject, type FNode, type 
 import { importExcel, importKmz } from "@/lib/importers";
 import { supabase } from "@/integrations/supabase/client";
 import { AccountControl } from "@/components/AccountControl";
+import { draftKey, LAST_KEY, readDraft, type ProjectRow } from "@/lib/project-store";
 
 const NetworkMap = lazy(() => import("@/components/NetworkMap"));
 
-export const Route = createFileRoute("/")({
-  ssr: false,
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "FTTH Vision — Projeto de rede óptica 3D" },
@@ -26,52 +26,133 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const KEY = "ftth-project-v1";
+type Status = "loading" | "saved" | "dirty" | "unsaved-new" | "error";
 
 function Index() {
-  const [project, setProject] = useState<Project>(seedProject);
+  const { user } = Route.useRouteContext();
+  const [project, setProjectRaw] = useState<Project>(seedProject);
   const [view, setView] = useState<"map" | "timeline">("map");
   const [mode, setMode] = useState<MapMode>("view");
   const [selected, setSelected] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [focus, setFocus] = useState<{ id: string; ts: number } | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState("Projeto FTTH");
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState<string | null>(null);
+  const [status, setStatus] = useState<Status>("loading");
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const loadSeq = useRef(0);
+
+  // Toda edição do usuário passa por aqui: marca como não salvo.
+  const setProject: typeof setProjectRaw = useCallback((v) => {
+    setProjectRaw(v);
+    setStatus((s) => (s === "loading" ? s : projectIdRef.current ? "dirty" : "unsaved-new"));
+  }, []);
+  const projectIdRef = useRef<string | null>(null);
+  projectIdRef.current = projectId;
+
+  const refreshList = useCallback(async () => {
+    const { data, error } = await supabase.from("ftth_projects").select("id,name,updated_at").order("updated_at", { ascending: false });
+    if (error) throw error;
+    setProjects(data ?? []);
+    return data ?? [];
+  }, []);
+
+  const loadProject = useCallback(async (id: string) => {
+    const seq = ++loadSeq.current;
+    setStatus("loading");
+    const { data, error } = await supabase.from("ftth_projects").select("id,name,data,updated_at").eq("id", id).maybeSingle();
+    if (seq !== loadSeq.current) return; // outra carga começou depois: descarta esta resposta
+    if (error || !data) { setStatus("error"); setNotice("Erro ao carregar projeto: " + (error?.message ?? "não encontrado")); return; }
+    setProjectId(data.id); setProjectName(data.name); setBaseUpdatedAt(data.updated_at);
+    setSelected(null); setOpen(null);
+    localStorage.setItem(LAST_KEY, data.id);
+    // Rascunho local só é aplicado se foi feito sobre esta mesma versão do banco.
+    const draft = readDraft(data.id);
+    if (draft && draft.baseUpdatedAt === data.updated_at) {
+      setProjectRaw(draft.data); setStatus("dirty");
+      setNotice("Rascunho local restaurado — ainda NÃO salvo no banco.");
+    } else {
+      if (draft) localStorage.removeItem(draftKey(data.id));
+      setProjectRaw(data.data as unknown as Project); setStatus("saved");
+    }
+  }, []);
 
   useEffect(() => {
-    let id: string | null = null;
-    try {
-      const s = localStorage.getItem(KEY);
-      if (s) {
-        const parsed = JSON.parse(s);
-        if (parsed.id) { id = parsed.id; setProjectId(parsed.id); }
-        if (parsed.data) setProject(parsed.data); else setProject(parsed);
-      }
-    } catch { /* ignore */ }
-    setLoaded(true);
     (async () => {
-      const q = supabase.from("ftth_projects").select("id,data");
-      const { data } = id ? await q.eq("id", id).maybeSingle() : await q.order("updated_at", { ascending: false }).limit(1).maybeSingle();
-      if (data?.data) { setProjectId(data.id); setProject(data.data as unknown as Project); }
+      try {
+        const list = await refreshList();
+        const last = localStorage.getItem(LAST_KEY);
+        const target = list.find((p) => p.id === last) ?? list[0];
+        if (target) await loadProject(target.id);
+        else { setProjectRaw(seedProject()); setStatus("unsaved-new"); }
+      } catch (e) { setStatus("error"); setNotice("Erro ao listar projetos: " + (e as Error).message); }
     })();
-  }, []);
-  useEffect(() => { if (loaded) localStorage.setItem(KEY, JSON.stringify({ id: projectId, data: project })); }, [project, loaded, projectId]);
-  useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(null), 3500); return () => clearTimeout(t); }, [notice]);
+  }, [refreshList, loadProject]);
 
-  const save = async () => {
+  // Rascunho local apenas para alterações ainda não salvas.
+  useEffect(() => {
+    if (status !== "dirty" && status !== "unsaved-new") return;
+    localStorage.setItem(draftKey(projectId), JSON.stringify({ data: project, baseUpdatedAt }));
+  }, [project, status, projectId, baseUpdatedAt]);
+  useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(null), 4000); return () => clearTimeout(t); }, [notice]);
+
+  const confirmDiscard = () => (status !== "dirty" && status !== "unsaved-new") || confirm("Há alterações não salvas. Descartar?");
+
+  const save = async (asNew = false) => {
+    if (saving || status === "loading") return;
+    let name = projectName;
+    if (asNew || !projectId) {
+      const n = prompt("Nome do projeto:", asNew ? `${projectName} (cópia)` : `${project.city}.${project.pop}`);
+      if (!n?.trim()) return;
+      name = n.trim();
+    }
     setSaving(true);
-    const row = { name: `${project.city}.${project.pop}`, data: project as never, updated_at: new Date().toISOString() };
-    const res = projectId
-      ? await supabase.from("ftth_projects").update(row).eq("id", projectId).select("id").single()
-      : await supabase.from("ftth_projects").insert(row).select("id").single();
-    setSaving(false);
-    if (res.error) { setNotice("Erro ao salvar: " + res.error.message); return; }
-    setProjectId(res.data.id);
-    setNotice("Projeto salvo no banco de dados ✓");
+    try {
+      const now = new Date().toISOString();
+      let row: { id: string; name: string; updated_at: string } | null;
+      if (projectId && !asNew) {
+        // Concorrência otimista: só grava se ninguém alterou depois da última leitura.
+        let q = supabase.from("ftth_projects").update({ name, data: project as never, updated_at: now }).eq("id", projectId);
+        if (baseUpdatedAt) q = q.eq("updated_at", baseUpdatedAt);
+        const { data, error } = await q.select("id,name,updated_at").maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error("o projeto foi alterado em outra sessão ou não existe mais. Recarregue antes de salvar.");
+        row = data;
+      } else {
+        const { data, error } = await supabase.from("ftth_projects").insert({ name, data: project as never, user_id: user.id }).select("id,name,updated_at").single();
+        if (error) throw error;
+        row = data;
+      }
+      localStorage.removeItem(draftKey(asNew ? projectId : projectId ?? null));
+      localStorage.removeItem(draftKey(null));
+      setProjectId(row.id); setProjectName(row.name); setBaseUpdatedAt(row.updated_at); setStatus("saved");
+      localStorage.setItem(LAST_KEY, row.id);
+      await refreshList();
+      setNotice("Projeto salvo no banco de dados ✓");
+    } catch (e) {
+      setNotice("Erro ao salvar: " + (e as Error).message);
+    } finally { setSaving(false); }
   };
+
+  const newProject = () => {
+    if (!confirmDiscard()) return;
+    loadSeq.current++;
+    setProjectId(null); setBaseUpdatedAt(null); setProjectName("Projeto FTTH");
+    setProjectRaw(seedProject()); setSelected(null); setOpen(null); setStatus("unsaved-new");
+  };
+
+  const selectProject = (id: string) => {
+    if (id === projectId) return;
+    if (!confirmDiscard()) return;
+    if (projectId) localStorage.removeItem(draftKey(projectId));
+    void loadProject(id);
+  };
+
+  const statusLabel: Record<Status, string> = { loading: "Carregando…", saved: "Salvo", dirty: "Alterações não salvas", "unsaved-new": "Novo — não salvo", error: "Erro" };
 
   const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];

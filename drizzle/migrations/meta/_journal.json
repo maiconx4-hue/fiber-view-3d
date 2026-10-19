@@ -8,6 +8,13 @@
       "when": 1792176537393,
       "tag": "0000_create_ftth_projects",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792416468006,
+      "tag": "0001_restrict_ftth_projects_to_owner",
+      "breakpoints": true
     }
   ]
 }
